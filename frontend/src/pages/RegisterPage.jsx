@@ -120,7 +120,7 @@ export default function RegisterPage() {
           </h1>
 
           <p className="mt-2 text-secondary">
-            Join FixIt and get started
+            Join Sala7ha and get started
           </p>
         </div>
 
