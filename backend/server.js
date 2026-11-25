@@ -2,7 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+
 const connectDB = require("./config/db");
+const healthRoutes = require("./routes/health");
 
 const app = express();
 
@@ -10,15 +12,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Test Route
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Home Services API is running!",
-  });
-});
+// API Routes
+app.use("/api", healthRoutes);
 
-// Start Server
+// Server Configuration
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
