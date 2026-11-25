@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
+      trim: true,
     },
 
     role: {
@@ -35,11 +36,33 @@ const userSchema = new mongoose.Schema(
     area: {
       type: String,
       required: true,
+      trim: true,
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
     },
   },
   {
-    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// One-to-One relationship with TechnicianProfile
+userSchema.virtual("technicianProfile", {
+  ref: "TechnicianProfile",
+  localField: "_id",
+  foreignField: "userId",
+  justOne: true,
+});
+
+// One-to-Many relationship with ServiceRequest
+userSchema.virtual("customerRequests", {
+  ref: "ServiceRequest",
+  localField: "_id",
+  foreignField: "customerId",
+});
 
 module.exports = mongoose.model("User", userSchema);

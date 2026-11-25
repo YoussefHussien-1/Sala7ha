@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 
 const User = require("./models/User");
-const Technician = require("./models/Technician");
+const TechnicianProfile = require("./models/TechnicianProfile");
 const ServiceRequest = require("./models/ServiceRequest");
 
 const testModels = async () => {
@@ -15,7 +15,6 @@ const testModels = async () => {
   let serviceRequest;
 
   try {
-    // Connect to MongoDB
     await connectDB();
 
     console.log("\nStarting Models Test...\n");
@@ -32,7 +31,7 @@ const testModels = async () => {
       area: "Giza",
     });
 
-    console.log("Customer Model: PASSED");
+    console.log("User Model: PASSED");
 
     // 2. Create Technician User
     technicianUser = await User.create({
@@ -45,15 +44,18 @@ const testModels = async () => {
     });
 
     // 3. Create Technician Profile
-    technicianProfile = await Technician.create({
+    technicianProfile = await TechnicianProfile.create({
       userId: technicianUser._id,
-      specialty: "Plumbing",
       experienceYears: 5,
-      bio: "Test Technician Profile",
+      bio: "Test Technician",
       isAvailable: true,
     });
 
-    console.log("Technician Model: PASSED");
+    if (technicianProfile.specialty !== "General") {
+      throw new Error("Default specialty test failed");
+    }
+
+    console.log("TechnicianProfile Model: PASSED");
 
     // 4. Create Service Request
     serviceRequest = await ServiceRequest.create({
@@ -66,7 +68,14 @@ const testModels = async () => {
 
     console.log("ServiceRequest Model: PASSED");
 
-    // 5. Verify relationships
+    // 5. Check default status
+    if (serviceRequest.status !== "PENDING") {
+      throw new Error("Default request status test failed");
+    }
+
+    console.log("Default Status: PASSED");
+
+    // 6. Test relationships
     const savedRequest = await ServiceRequest.findById(
       serviceRequest._id
     )
@@ -75,18 +84,40 @@ const testModels = async () => {
         path: "technicianId",
         populate: {
           path: "userId",
-          select: "name email",
+          select: "name email phone area",
         },
       });
 
-    console.log("\nRequest Status:", savedRequest.status);
-
-    console.log("Customer:", savedRequest.customerId.name);
+    console.log("\nCustomer:", savedRequest.customerId.name);
 
     console.log(
       "Technician:",
       savedRequest.technicianId.userId.name
     );
+
+    // 7. Test virtual relationships
+    const customerWithRequests = await User.findById(
+      customer._id
+    ).populate("customerRequests");
+
+    const technicianWithRequests =
+      await TechnicianProfile.findById(
+        technicianProfile._id
+      ).populate("assignedRequests");
+
+    const technicianAccount = await User.findById(
+      technicianUser._id
+    ).populate("technicianProfile");
+
+    if (
+      customerWithRequests.customerRequests.length !== 1 ||
+      technicianWithRequests.assignedRequests.length !== 1 ||
+      !technicianAccount.technicianProfile
+    ) {
+      throw new Error("Relationship test failed");
+    }
+
+    console.log("Relationships: PASSED");
 
     console.log("\nALL MODELS TESTS PASSED!");
 
@@ -95,14 +126,17 @@ const testModels = async () => {
     process.exitCode = 1;
 
   } finally {
-    // Clean up test data
     try {
       if (serviceRequest) {
-        await ServiceRequest.deleteOne({ _id: serviceRequest._id });
+        await ServiceRequest.deleteOne({
+          _id: serviceRequest._id,
+        });
       }
 
       if (technicianProfile) {
-        await Technician.deleteOne({ _id: technicianProfile._id });
+        await TechnicianProfile.deleteOne({
+          _id: technicianProfile._id,
+        });
       }
 
       if (customer) {
@@ -118,9 +152,10 @@ const testModels = async () => {
     } catch (cleanupError) {
       console.error("Cleanup Error:", cleanupError.message);
       process.exitCode = 1;
-    }
 
-    await mongoose.connection.close();
+    } finally {
+      await mongoose.disconnect();
+    }
   }
 };
 
