@@ -4,6 +4,11 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const TechnicianProfile = require("../models/TechnicianProfile");
 
+const {
+  normalizeEgyptianPhone,
+  normalizeGovernorate,
+} = require("../utils/registrationValidation");
+
 // Generate JWT Token
 const generateToken = (userId) => {
   if (!process.env.JWT_SECRET) {
@@ -39,7 +44,9 @@ const registerUser = async (req, res) => {
 
     if (
       !requiredFields.every(
-        (field) => typeof field === "string" && field.trim().length > 0
+        (field) =>
+          typeof field === "string" &&
+          field.trim().length > 0
       )
     ) {
       return res.status(400).json({
@@ -49,6 +56,7 @@ const registerUser = async (req, res) => {
 
     // Normalize email and role
     const normalizedEmail = email.trim().toLowerCase();
+
     const normalizedRole =
       typeof role === "string" ? role.toUpperCase() : "";
 
@@ -75,6 +83,26 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Validate and normalize Egyptian phone
+    const normalizedPhone = normalizeEgyptianPhone(phone);
+
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        field: "phone",
+        message: "Please enter a valid Egyptian mobile number.",
+      });
+    }
+
+    // Validate governorate
+    const normalizedArea = normalizeGovernorate(area);
+
+    if (!normalizedArea) {
+      return res.status(400).json({
+        field: "area",
+        message: "Please select a valid Egyptian governorate.",
+      });
+    }
+
     // Check if email already exists
     const existingUser = await User.findOne({
       email: normalizedEmail,
@@ -94,9 +122,9 @@ const registerUser = async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       password: hashedPassword,
-      phone: phone.trim(),
+      phone: normalizedPhone,
       role: normalizedRole,
-      area: area.trim(),
+      area: normalizedArea,
     });
 
     createdUserId = user._id;
@@ -133,8 +161,12 @@ const registerUser = async (req, res) => {
         });
 
         await User.findByIdAndDelete(createdUserId);
+
       } catch (cleanupError) {
-        console.error("Registration Cleanup Error:", cleanupError.message);
+        console.error(
+          "Registration Cleanup Error:",
+          cleanupError.message
+        );
       }
     }
 

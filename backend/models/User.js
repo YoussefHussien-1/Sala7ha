@@ -1,3 +1,7 @@
+const {
+  EGYPT_GOVERNORATES,
+} = require("../constants/egyptGovernorates");
+
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
@@ -22,11 +26,14 @@ const userSchema = new mongoose.Schema(
     },
 
     phone: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
+  type: String,
+  required: true,
+  trim: true,
+  match: [
+    /^01[0125]\d{8}$/,
+    "Invalid Egyptian mobile number",
+  ],
+},
     role: {
       type: String,
       enum: ["CUSTOMER", "TECHNICIAN"],
@@ -34,11 +41,14 @@ const userSchema = new mongoose.Schema(
     },
 
     area: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
+  type: String,
+  required: true,
+  trim: true,
+  enum: {
+    values: EGYPT_GOVERNORATES.map((item) => item.value),
+    message: "Invalid Egyptian governorate",
+  },
+},
     createdAt: {
       type: Date,
       default: Date.now,

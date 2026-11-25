@@ -1,6 +1,11 @@
 import { Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+
+// Home Page
 function HomePage() {
   return (
     <section className="card p-8">
@@ -15,6 +20,7 @@ function HomePage() {
   );
 }
 
+// Placeholder Pages
 function PlaceholderPage({ title, description }) {
   return (
     <section className="card p-8">
@@ -33,6 +39,7 @@ function PlaceholderPage({ title, description }) {
   );
 }
 
+// Main App
 export default function App() {
   return (
     <div className="min-h-screen bg-page">
@@ -65,29 +72,26 @@ export default function App() {
             }
           />
 
+          {/* Authentication Pages */}
           <Route
             path="/login"
-            element={
-              <PlaceholderPage
-                title="Login"
-                description="Authentication page will be implemented by the responsible team member."
-              />
-            }
+            element={<LoginPage />}
           />
 
           <Route
             path="/register"
-            element={
-              <PlaceholderPage
-                title="Register"
-                description="Registration page will be implemented by the responsible team member."
-              />
-            }
+            element={<RegisterPage />}
           />
 
+          {/* 404 */}
           <Route
             path="*"
-            element={<PlaceholderPage title="404" description="Page not found." />}
+            element={
+              <PlaceholderPage
+                title="404"
+                description="Page not found."
+              />
+            }
           />
 
         </Routes>
