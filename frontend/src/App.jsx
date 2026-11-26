@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import TechnicianProfilePage from "./pages/TechnicianProfilePage";
 
 // Home Page
 function HomePage() {
@@ -60,6 +61,11 @@ export default function App() {
                 description="Find the right professional for your needs."
               />
             }
+          />
+
+          <Route
+            path="/technician/profile"
+            element={<TechnicianProfilePage />}
           />
 
           <Route
