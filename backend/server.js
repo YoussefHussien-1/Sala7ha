@@ -22,6 +22,12 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
+    // Fail fast with a clear message if .env is incomplete
+    const missing = ["MONGO_URI", "JWT_SECRET"].filter((key) => !process.env[key]);
+    if (missing.length) {
+      throw new Error(`Missing ${missing.join(", ")} in backend/.env (see backend/.env.example)`);
+    }
+
     await connectDB();
 
     app.listen(PORT, () => {

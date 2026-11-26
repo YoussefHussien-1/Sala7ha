@@ -9,20 +9,73 @@ const {
   normalizeGovernorate,
 } = require("../utils/registrationValidation");
 
-// Generate JWT Token
+// Generate JWT
 const generateToken = (userId) => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not configured");
-  }
-
   return jwt.sign(
     { userId },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    }
   );
 };
 
-// ================= REGISTER =================
+// Check database connection errors
+const isDatabaseConnectionError = (error) => {
+  const message = String(error?.message || "").toLowerCase();
+  const name = String(error?.name || "").toLowerCase();
+
+  return (
+    name.includes("serverselection") ||
+    name.includes("mongonetwork") ||
+    message.includes("econnrefused") ||
+    message.includes("timed out") ||
+    message.includes("not connected")
+  );
+};
+
+// Handle authentication errors
+const handleAuthError = (res, error, operation) => {
+  console.error(
+    `[AUTH][${operation}]`,
+    error.stack || error.message || error
+  );
+
+  if (error?.code === 11000) {
+    return res.status(409).json({
+      code: "DUPLICATE_VALUE",
+      message: "Email already registered. Try logging in instead.",
+    });
+  }
+
+  if (error?.name === "ValidationError") {
+    const validationMessages = Object.values(error.errors || {})
+      .map((item) => item.message)
+      .filter(Boolean);
+
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message:
+        validationMessages[0] ||
+        "Please check the submitted information.",
+    });
+  }
+
+  if (isDatabaseConnectionError(error)) {
+    return res.status(503).json({
+      code: "DATABASE_UNAVAILABLE",
+      message:
+        "The database is temporarily unavailable. Check MongoDB Atlas connection.",
+    });
+  }
+
+  return res.status(500).json({
+    code: `${operation}_FAILED`,
+    message: `${operation} failed because of a server error. Check the backend terminal.`,
+  });
+};
+
+// REGISTER
 const registerUser = async (req, res) => {
   let createdUserId = null;
 
@@ -39,57 +92,71 @@ const registerUser = async (req, res) => {
       bio,
     } = req.body || {};
 
-    // Check required fields
-    const requiredFields = [name, email, password, phone, area];
+    // Required fields
+    const requiredFields = [
+      name,
+      email,
+      password,
+      phone,
+      area,
+    ];
 
-    if (
-      !requiredFields.every(
-        (field) =>
-          typeof field === "string" &&
-          field.trim().length > 0
-      )
-    ) {
+    const hasAllRequiredFields = requiredFields.every(
+      (field) =>
+        typeof field === "string" &&
+        field.trim().length > 0
+    );
+
+    if (!hasAllRequiredFields) {
       return res.status(400).json({
-        message: "Please provide all required fields",
+        code: "MISSING_REQUIRED_FIELDS",
+        message:
+          "Please provide name, email, password, phone, and governorate.",
       });
     }
 
-    // Normalize email and role
+    // Normalize email
     const normalizedEmail = email.trim().toLowerCase();
 
-    const normalizedRole =
-      typeof role === "string" ? role.toUpperCase() : "";
-
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
-        message: "Please provide a valid email address",
+        code: "INVALID_EMAIL",
+        message: "Please provide a valid email address.",
       });
     }
 
     // Validate role
+    const normalizedRole =
+      typeof role === "string"
+        ? role.trim().toUpperCase()
+        : "";
+
     if (!["CUSTOMER", "TECHNICIAN"].includes(normalizedRole)) {
       return res.status(400).json({
-        message: "Invalid role",
+        code: "INVALID_ROLE",
+        message: "Invalid account type.",
       });
     }
 
     // Validate password
     if (password.length < 8) {
       return res.status(400).json({
-        message: "Password must be at least 8 characters",
+        code: "WEAK_PASSWORD",
+        message: "Password must be at least 8 characters long.",
       });
     }
 
-    // Validate and normalize Egyptian phone
+    // Validate phone
     const normalizedPhone = normalizeEgyptianPhone(phone);
 
     if (!normalizedPhone) {
       return res.status(400).json({
+        code: "INVALID_PHONE",
         field: "phone",
-        message: "Please enter a valid Egyptian mobile number.",
+        message:
+          "Please enter a valid Egyptian mobile number (010, 011, 012, or 015).",
       });
     }
 
@@ -98,19 +165,49 @@ const registerUser = async (req, res) => {
 
     if (!normalizedArea) {
       return res.status(400).json({
+        code: "INVALID_GOVERNORATE",
         field: "area",
         message: "Please select a valid Egyptian governorate.",
       });
     }
 
-    // Check if email already exists
+    // Validate technician information
+    let normalizedExperienceYears = 0;
+    let normalizedSpecialty = "General";
+    let normalizedBio = "";
+
+    if (normalizedRole === "TECHNICIAN") {
+      normalizedExperienceYears = Number(experienceYears ?? 0);
+
+      normalizedSpecialty =
+        typeof specialty === "string" && specialty.trim()
+          ? specialty.trim()
+          : "General";
+
+      normalizedBio =
+        typeof bio === "string" ? bio.trim() : "";
+
+      if (
+        !Number.isInteger(normalizedExperienceYears) ||
+        normalizedExperienceYears < 0
+      ) {
+        return res.status(400).json({
+          code: "INVALID_EXPERIENCE_YEARS",
+          message:
+            "Experience years must be a whole number greater than or equal to zero.",
+        });
+      }
+    }
+
+    // Check existing email
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
 
     if (existingUser) {
       return res.status(409).json({
-        message: "Email already registered",
+        code: "EMAIL_ALREADY_REGISTERED",
+        message: "Email already registered. Try logging in instead.",
       });
     }
 
@@ -129,31 +226,32 @@ const registerUser = async (req, res) => {
 
     createdUserId = user._id;
 
-    // Create TechnicianProfile if user is a technician
+    // Create technician profile if needed
     if (normalizedRole === "TECHNICIAN") {
       await TechnicianProfile.create({
         userId: user._id,
-        specialty: specialty || "General",
-        experienceYears: experienceYears ?? 0,
-        bio: bio || "",
+        specialty: normalizedSpecialty,
+        experienceYears: normalizedExperienceYears,
+        bio: normalizedBio,
       });
     }
 
     // Generate token
     const token = generateToken(user._id);
 
-    // Remove password before sending response
+    // Remove password from response
     const userData = user.toObject();
     delete userData.password;
 
     return res.status(201).json({
-      message: "User registered successfully",
+      message: "User registered successfully.",
       token,
       user: userData,
     });
 
   } catch (error) {
-    // Cleanup if registration fails after user creation
+
+    // Cleanup partially created account
     if (createdUserId) {
       try {
         await TechnicianProfile.findOneAndDelete({
@@ -164,32 +262,21 @@ const registerUser = async (req, res) => {
 
       } catch (cleanupError) {
         console.error(
-          "Registration Cleanup Error:",
+          "[AUTH][REGISTER_CLEANUP]",
           cleanupError.message
         );
       }
     }
 
-    if (error.code === 11000) {
-      return res.status(409).json({
-        message: "Email already registered",
-      });
-    }
-
-    console.error("Register Error:", error.message);
-
-    return res.status(500).json({
-      message: "Registration failed",
-    });
+    return handleAuthError(res, error, "REGISTER");
   }
 };
 
-// ================= LOGIN =================
+// LOGIN
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body || {};
 
-    // Validate input
     if (
       typeof email !== "string" ||
       typeof password !== "string" ||
@@ -197,22 +284,22 @@ const loginUser = async (req, res) => {
       !password
     ) {
       return res.status(400).json({
-        message: "Please provide email and password",
+        code: "MISSING_LOGIN_FIELDS",
+        message: "Please provide both email and password.",
       });
     }
 
-    // Find user
     const user = await User.findOne({
       email: email.trim().toLowerCase(),
     });
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
+        message: "Invalid email or password.",
       });
     }
 
-    // Compare password
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.password
@@ -220,29 +307,24 @@ const loginUser = async (req, res) => {
 
     if (!isPasswordCorrect) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
+        message: "Invalid email or password.",
       });
     }
 
-    // Generate token
     const token = generateToken(user._id);
 
-    // Remove password before sending response
     const userData = user.toObject();
     delete userData.password;
 
     return res.status(200).json({
-      message: "Login successful",
+      message: "Login successful.",
       token,
       user: userData,
     });
 
   } catch (error) {
-    console.error("Login Error:", error.message);
-
-    return res.status(500).json({
-      message: "Login failed",
-    });
+    return handleAuthError(res, error, "LOGIN");
   }
 };
 

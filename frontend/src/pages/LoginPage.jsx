@@ -54,7 +54,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-secondary">
-            Login to your FixIt account
+            Login to your Sala7ha account
           </p>
         </div>
 
