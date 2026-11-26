@@ -30,11 +30,29 @@ export function AuthProvider({ children }) {
           setUser(response.data.user);
         }
       })
-      .catch(() => {
-        if (!cancelled) {
+      .catch((error) => {
+        if (cancelled) return;
+
+        // Remove the token only when the backend confirms it is invalid.
+        // A temporary database/network outage should not erase it.
+        if (error.response?.status === 401) {
           localStorage.removeItem("token");
           setUser(null);
+          return;
         }
+
+        console.error(
+          "[AUTH][SESSION_RESTORE] Could not verify the saved session:",
+          {
+            message: error.message,
+            code: error.code,
+            status: error.response?.status,
+            response: error.response?.data,
+            url: error.config?.url,
+          }
+        );
+
+        setUser(null);
       })
       .finally(() => {
         if (!cancelled) {
@@ -55,7 +73,10 @@ export function AuthProvider({ children }) {
 
   // Login
   const login = useCallback(async (credentials) => {
-    const response = await api.post("/auth/login", credentials);
+    const response = await api.post(
+      "/auth/login",
+      credentials
+    );
 
     saveAuth(response.data);
 
@@ -64,7 +85,10 @@ export function AuthProvider({ children }) {
 
   // Register
   const register = useCallback(async (userData) => {
-    const response = await api.post("/auth/register", userData);
+    const response = await api.post(
+      "/auth/register",
+      userData
+    );
 
     saveAuth(response.data);
 
