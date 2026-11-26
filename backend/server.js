@@ -6,6 +6,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/authRoutes");
+const technicianRoutes = require("./routes/technicianRoutes");
 
 const app = express();
 
@@ -16,6 +17,8 @@ app.use(express.json());
 // API Routes
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/technician", technicianRoutes);
 
 // Server Configuration
 const PORT = process.env.PORT || 5000;

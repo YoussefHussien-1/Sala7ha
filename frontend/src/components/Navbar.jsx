@@ -1,3 +1,4 @@
+
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
@@ -53,6 +54,16 @@ export default function Navbar() {
           <NavLink to="/requests" className={linkClass}>
             My Requests
           </NavLink>
+
+          {/* Technician Profile Link */}
+          {isAuthenticated && user?.role === "TECHNICIAN" && (
+            <NavLink
+              to="/technician/profile"
+              className={linkClass}
+            >
+              My Profile
+            </NavLink>
+          )}
         </div>
 
         {/* Authentication Section */}
