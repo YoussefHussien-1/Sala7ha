@@ -5,6 +5,8 @@ import Navbar from "./components/Navbar";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import TechnicianProfilePage from "./pages/TechnicianProfilePage";
+import TechnicianRequestsPage from "./pages/TechnicianRequestsPage";
+import MyRequestsPage from "./pages/MyRequestsPage";
 
 // Home Page
 function HomePage() {
@@ -68,14 +70,11 @@ export default function App() {
             element={<TechnicianProfilePage />}
           />
 
+          <Route path="/requests" element={<MyRequestsPage />} />
+
           <Route
-            path="/requests"
-            element={
-              <PlaceholderPage
-                title="My Requests"
-                description="Track your service requests."
-              />
-            }
+            path="/technician/requests"
+            element={<TechnicianRequestsPage />}
           />
 
           {/* Authentication Pages */}

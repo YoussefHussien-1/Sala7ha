@@ -1,4 +1,4 @@
-# Sala7ha# Home Services Platform
+# Sala7ha — Home Services Platform
 
 A web-based platform that connects customers with professional home service technicians, making it easier to find, compare, and request trusted maintenance services.
 
@@ -29,36 +29,43 @@ The platform provides separate experiences for customers and technicians, allowi
 
 ```text
 Sala7ha/
-│
 ├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   │   └── Navbar.jsx
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── vite.config.js
-│   └── package.json
-│
+│   └── src/
+│       ├── components/
+│       │   ├── Navbar.jsx
+│       │   ├── RequestStatusBadge.jsx
+│       │   └── RequestStatusTracker.jsx
+│       ├── context/
+│       ├── pages/
+│       │   ├── LoginPage.jsx
+│       │   ├── RegisterPage.jsx
+│       │   ├── TechnicianProfilePage.jsx
+│       │   ├── TechnicianRequestsPage.jsx
+│       │   └── MyRequestsPage.jsx
+│       ├── services/api.js
+│       ├── utils/requestFormatters.js
+│       ├── App.jsx
+│       ├── main.jsx
+│       └── index.css
 ├── backend/
-│   ├── config/
-│   │   └── db.js
+│   ├── config/db.js
+│   ├── constants/egyptGovernorates.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── technicianController.js
+│   │   └── serviceRequestController.js
+│   ├── middleware/authMiddleware.js
 │   ├── models/
 │   │   ├── User.js
-│   │   ├── Technician.js
+│   │   ├── TechnicianProfile.js
 │   │   └── ServiceRequest.js
 │   ├── routes/
-│   │   └── health.js
+│   │   ├── authRoutes.js
+│   │   ├── health.js
+│   │   ├── technicianRoutes.js
+│   │   └── serviceRequestRoutes.js
 │   ├── server.js
-│   ├── testModels.js
 │   └── package.json
-│
 ├── .gitignore
 └── README.md
 ```
@@ -98,8 +105,10 @@ npm install
 Create a `.env` file inside the backend folder.
 
 ```env
-PORT=5000
-MONGODB_URI=YOUR_MONGODB_CONNECTION_STRING
+PORT=5001
+MONGO_URI=YOUR_MONGODB_CONNECTION_STRING
+JWT_SECRET=YOUR_LONG_RANDOM_SECRET
+JWT_EXPIRES_IN=7d
 ```
 
 Replace the placeholder with your own MongoDB Atlas connection string.
@@ -117,7 +126,7 @@ npm run dev
 The backend server will run at:
 
 ```text
-http://localhost:5000
+http://localhost:5001
 ```
 
 ### 5. Install Frontend Dependencies
@@ -158,7 +167,7 @@ Frontend Request:
 http://localhost:5173/api/health
 
 Backend Destination:
-http://localhost:5000/api/health
+http://localhost:5001/api/health
 ```
 
 ## Database Models
@@ -235,19 +244,29 @@ Shared UI components and common styles should be reused throughout the applicati
 
 ## Current Development Scope
 
-The initial project setup includes:
+The current project includes:
 
-- React and Vite configuration.
-- Tailwind CSS design system.
-- Shared Navbar component.
-- React Router configuration.
-- Axios API configuration.
-- Express server setup.
-- MongoDB Atlas connection.
-- Initial database models.
-- Health-check endpoint.
+- React and Vite configuration with Tailwind CSS.
+- Shared Navbar, React Router, and Axios API configuration.
+- Express server and MongoDB Atlas connection.
+- User, TechnicianProfile, and ServiceRequest models.
+- Authentication and technician profile/availability endpoints.
+- Customer request history and technician incoming-request dashboards.
+- Technician accept/reject actions for pending requests.
 
-Authentication, booking workflows, technician search, and dashboard functionality are implemented separately as team tasks.
+### Service Request Dashboard API
+
+All endpoints require a valid JWT Bearer token.
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| `GET` | `/api/requests/customer` | Customer | Return the signed-in customer's requests and technician details. |
+| `GET` | `/api/requests/technician` | Technician | Return requests assigned to the signed-in technician. |
+| `PATCH` | `/api/requests/:id/status` | Technician | Accept or reject an assigned pending request. |
+
+The status update body must contain `{"status":"ACCEPTED"}` or `{"status":"REJECTED"}`. A request can only be updated while its current status is `PENDING`.
+
+The backend expects `PORT=5001`, `MONGO_URI`, and `JWT_SECRET` in `backend/.env`. Never commit the real `.env` file.
 
 ---
 
