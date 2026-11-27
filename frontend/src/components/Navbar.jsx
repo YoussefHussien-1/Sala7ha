@@ -41,30 +41,41 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation Links */}
-        <div className="hidden items-center gap-6 md:flex">
-          <NavLink to="/" end className={linkClass}>
-            Home
-          </NavLink>
+        
+{/* Navigation Links */}
+<div className="hidden items-center gap-6 md:flex">
+  <NavLink to="/" end className={linkClass}>
+    Home
+  </NavLink>
 
-          <NavLink to="/technicians" className={linkClass}>
-            Find Technicians
-          </NavLink>
+  {/* Customers can find technicians */}
+  {(!isAuthenticated || user?.role === "CUSTOMER") && (
+    <NavLink to="/technicians" className={linkClass}>
+      Find Technicians
+    </NavLink>
+  )}
 
-          <NavLink to="/requests" className={linkClass}>
-            My Requests
-          </NavLink>
+  {/* Customer Dashboard */}
+  {isAuthenticated && user?.role === "CUSTOMER" && (
+    <NavLink to="/requests" className={linkClass}>
+      My Requests
+    </NavLink>
+  )}
 
-          {/* Technician Profile Link */}
-          {isAuthenticated && user?.role === "TECHNICIAN" && (
-            <NavLink
-              to="/technician/profile"
-              className={linkClass}
-            >
-              My Profile
-            </NavLink>
-          )}
-        </div>
+  {/* Technician Dashboard */}
+  {isAuthenticated && user?.role === "TECHNICIAN" && (
+    <>
+      <NavLink to="/technician/requests" className={linkClass}>
+        Incoming Requests
+      </NavLink>
+
+      <NavLink to="/technician/profile" className={linkClass}>
+        My Profile
+      </NavLink>
+    </>
+  )}
+</div>
+
 
         {/* Authentication Section */}
         <div className="flex items-center gap-3">
